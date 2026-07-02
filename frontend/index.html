@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Frontend</title>
+</head>
+<body>
+  <h1>Frontend</h1>
+
+  <input id="name" placeholder="Tu nombre" />
+  <button onclick="callBackend()">Saludar</button>
+
+  <p id="result"></p>
+
+  <script>
+    async function callBackend() {
+      const name = document.getElementById("name").value;
+
+      const response = await fetch(`/api?name=${name}`);
+      const text = await response.text();
+
+      document.getElementById("result").innerText = text;
+    }
+  </script>
+</body>
+</html>
