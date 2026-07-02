@@ -105,15 +105,15 @@ El **reverse-proxy-service** se expone como `NodePort` en el puerto `30080` del 
 
 ```bash
 # 1. Construir las imágenes Docker
-docker build -t demo-compose-backend:latest ./backend
-docker build -t demo-compose-frontend:latest ./frontend
+docker build -t ghcr.io/mapfre-gitops-9/demo-backend:latest ./backend
+docker build -t ghcr.io/mapfre-gitops-9/demo-frontend:latest ./frontend
 
 # 2. Crear el clúster Kind (si no existe)
 kind create cluster
 
 # 3. Cargar las imágenes en el clúster
-kind load docker-image demo-compose-backend:latest
-kind load docker-image demo-compose-frontend:latest
+kind load docker-image ghcr.io/mapfre-gitops-9/demo-backend:latest
+kind load docker-image ghcr.io/mapfre-gitops-9/demo-frontend:latest
 
 # 4. Desplegar con kustomize
 kubectl apply -k k8s/
