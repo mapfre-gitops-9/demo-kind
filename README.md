@@ -41,6 +41,7 @@ A continuación tienes la hoja de ruta de los conceptos y piezas tecnológicas q
 docs/                       ← Documentación administrativa y de apoyo
 ├── acuerdos-trabajo.md
 ├── administracion-imagenes.md
+├── bitacora-taller.md
 ├── buenas-practicas-seguridad.md
 ├── desarrollo-con-ia.md
 └── despliegue-killercoda.md
@@ -60,10 +61,12 @@ reverse-proxy/              ← Dockerfile para construir imagen local (demo-com
 
 > **Documentación Adicional:**
 > * Para entender cómo colaboramos en el repositorio, la estrategia de ramas y el proceso de revisión de código, consulta la [Guía de Acuerdos de Trabajo y Desarrollo](docs/acuerdos-trabajo.md).
+> * Para ver la evolución cronológica del taller, las demostraciones técnicas y los debates de arquitectura surgidos en cada sesión, lee la [Bitácora del Taller de Contenedores y Orquestación](docs/bitacora-taller.md).
 > * Para ver detalles sobre cómo configurar los registros, permisos de la organización y el pipeline de integración continua, consulta la [Guía de Gestión y Publicación de Imágenes](docs/administracion-imagenes.md).
 > * Para conocer las directrices sobre cómo evitar fugas de credenciales o datos sensibles durante el desarrollo diario (BAU), consulta la [Guía de Buenas Prácticas de Seguridad y Prevención de Fugas](docs/buenas-practicas-seguridad.md).
 > * Para ver cómo interactuar con este repositorio utilizando asistentes de IA o usar OpenCode como chatbot local, lee la [Guía de Desarrollo y Exploración con IA](docs/desarrollo-con-ia.md).
 > * Para desplegar y probar este proyecto en los entornos interactivos públicos gratuitos de Killercoda, consulta la [Guía de Despliegue en Killercoda](docs/despliegue-killercoda.md).
+
 
 
 
