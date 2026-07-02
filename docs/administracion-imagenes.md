@@ -4,7 +4,7 @@ Esta guía detalla la arquitectura de integración continua (CI) implementada pa
 
 ## 1. Automatización de Compilación (CI)
 
-El proyecto utiliza **GitHub Actions** para automatizar el ciclo de vida de los contenedores mediante el flujo de trabajo definido en [.github/workflows/build-and-push.yml](file:///Users/pedroamador/testlab/mapfre-gitops-9/demo-kind/.github/workflows/build-and-push.yml).
+El proyecto utiliza **GitHub Actions** para automatizar el ciclo de vida de los contenedores mediante el flujo de trabajo definido en [.github/workflows/build-and-push.yml](../.github/workflows/build-and-push.yml).
 
 ### Funcionamiento del Workflow:
 * **En Pull Requests hacia `main`:** Ejecuta una compilación de prueba para asegurar que los Dockerfiles del `frontend` y del `backend` no tienen errores sintácticos o de dependencias. **No se publica ninguna imagen** en este paso.
