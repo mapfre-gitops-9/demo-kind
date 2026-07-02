@@ -16,8 +16,8 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: demo-compose-frontend:latest
-          imagePullPolicy: Never
+          image: ghcr.io/mapfre-gitops-9/demo-frontend:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
           resources:
