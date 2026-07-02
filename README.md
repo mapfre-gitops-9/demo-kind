@@ -221,15 +221,23 @@ Para evitar este problema de portabilidad entre diferentes entornos y sistemas o
 
 ## Recursos de Aprendizaje (Laboratorios Prácticos)
 
-Para aquellos compañeros que se estén iniciando en el mundo de los contenedores y la orquestación (con la meta de familiarizarse con Kubernetes u OpenShift), la práctica interactiva es el mejor camino.
+Para aquellos compañeros que se estén iniciando en el mundo de los contenedores y la orquestación (con la meta de familiarizarse con Kubernetes u OpenShift), la práctica interactiva es el mejor camino. 
 
-Aunque la mítica plataforma **Katacoda** ya no existe, actualmente la plataforma **[LabEx.io](https://labex.io)** es una excelente alternativa. Permite registrarse de forma gratuita (por ejemplo, con una cuenta de Gmail) y realizar laboratorios interactivos directamente desde el navegador, con entornos reales y guías paso a paso.
+Aquí dispones de las mejores alternativas gratuitas para aprender directamente desde el navegador, sin necesidad de instalar nada en tu equipo:
 
-Aquí tienes tres itinerarios iniciales recomendados:
+### 1. Cursos Guiados Paso a Paso (LabEx.io)
+**[LabEx.io](https://labex.io)** te permite registrarte gratis (por ejemplo, con tu cuenta de Gmail) y te guía de forma estructurada en laboratorios con explicaciones teóricas y retos prácticos paso a paso:
 
-1. **[Linux for Noobs / Quick Start with Linux](https://labex.io):** Ideal para familiarizarse con la línea de comandos, navegación de directorios, permisos de archivos (muy útil para entender el problema de permisos de Nginx visto en la sección de troubleshooting) y tareas esenciales de administración de sistemas.
-2. **[Docker for Beginners / 30 Days of Docker](https://labex.io):** Aprende los conceptos fundamentales de contenedores: imágenes, redes, volúmenes de datos, puertos y cómo escribir Dockerfiles.
-3. **[Kubernetes for Noobs / Kubernetes Practice Labs](https://labex.io):** Da tus primeros pasos con un clúster Minikube real ejecutando comandos `kubectl` para crear deployments, exponer servicios, gestionar pods y entender la orquestación.
+*   **[Linux for Noobs / Quick Start with Linux](https://labex.io):** Ideal para familiarizarse con la línea de comandos, navegación de directorios y permisos de archivos (muy útil para comprender los errores de Nginx vistos en la sección de troubleshooting).
+*   **[Docker for Beginners / 30 Days of Docker](https://labex.io):** Aprende los conceptos fundamentales de contenedores: imágenes, redes, volúmenes de datos, puertos y cómo escribir tus propios Dockerfiles.
+*   **[Kubernetes for Noobs / Kubernetes Practice Labs](https://labex.io):** Da tus primeros pasos con un clúster Minikube real ejecutando comandos `kubectl` para crear deployments, exponer servicios y escalar pods.
+
+### 2. Entornos Interactivos y Escenarios Libres (Killercoda & Playgrounds)
+Si prefieres un enfoque al puro estilo de la mítica y desaparecida **Katacoda** (pantalla partida con guía interactiva a la izquierda y un terminal real a la derecha donde se autocompletan los comandos al hacer clic):
+
+*   **[Killercoda](https://killercoda.com/):** Es el sucesor directo de Katacoda. Ofrece una biblioteca enorme y gratuita de escenarios prácticos sobre Linux, Docker, Git y entornos multi-nodo reales de Kubernetes muy actualizados.
+*   **[Play with Docker](https://labs.play-with-docker.com/) y [Play with Kubernetes](https://labs.play-with-k8s.com/):** Iniciativas oficiales de la comunidad que te permiten abrir entornos interactivos (Playgrounds) limpios de Docker y Kubernetes durante 4 horas para probar tus propias imágenes o manifiestos de forma libre.
+
 
 
 
