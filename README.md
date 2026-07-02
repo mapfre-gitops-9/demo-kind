@@ -12,6 +12,29 @@ Este proyecto nace como evolución de [demo-compose](https://github.com/mapfre-g
 
 Este repositorio parte de esa misma base pero migrada a un despliegue Kubernetes sobre Kind.
 
+## 🎓 El Mapa de Aprendizaje (Viaje End-to-End)
+
+Este proyecto funciona como una maqueta mínima (*sandbox*), pero está estructurado para enseñarte un flujo de trabajo real de extremo a extremo (End-to-End) utilizando las mismas prácticas y herramientas que se manejan en producción (como OpenShift y pipelines corporativos). 
+
+A continuación tienes la hoja de ruta de los conceptos y piezas tecnológicas que vas a tocar en este repositorio:
+
+| Ficha / Concepto | ¿Qué hace en este proyecto? | ¿Para qué sirve en el mundo real? |
+| :--- | :--- | :--- |
+| **Linux y Redes** | Resolución de direccionamientos locales e internos mediante `kubectl port-forward` en Rancher Desktop. | Comprender la segmentación de redes, IPs privadas (RFC 1918), enrutamiento y depuración de conectividad en servidores locales y remotos. |
+| **Contenedores (Docker)** | Empaquetamiento del frontend y backend en imágenes independientes usando `Dockerfile` ligeros (`alpine`). | Estandarizar aplicaciones para que corran exactamente igual en tu máquina local, en un pipeline de CI o en producción. |
+| **Permisos en Construcción** | Aplicación de permisos explícitos de lectura (`RUN chmod 644`) en el `Dockerfile` del frontend. | Evitar problemas de portabilidad y errores de permisos HTTP `403 Forbidden` al compilar y ejecutar contenedores en diferentes plataformas host. |
+| **Orquestación (Kubernetes)** | Despliegue de `Deployments` (pods y réplicas), `Services` (balanceadores internos y NodePorts) y `ConfigMaps` para Nginx. | Aprender el estándar de la industria para ejecutar aplicaciones escalables, resilientes y autocurables en entornos de nube. |
+| **GitOps y Declaración (Kustomize)** | Agrupación de la arquitectura en `kustomization.yaml` desplegando de forma declarativa con `kubectl apply -k`. | Administrar la infraestructura como código de forma limpia, sin recurrir a plantillas complejas, facilitando el cambio dinámico de variables e imágenes. |
+| **Integración Continua (CI - GitHub Actions)** | Automatización de pruebas de compilación en Pull Requests y publicación automática de imágenes en GHCR en merges a `main`. | Asegurar que el código nunca se rompa en producción, automatizar procesos manuales y acelerar el ciclo de entrega de valor al usuario. |
+| **Compilación Multi-Arquitectura** | Emulación mediante QEMU en el workflow para soportar arquitecturas Intel (`amd64`) y Apple Silicon (`arm64`). | Soportar la diversidad de hardware moderno, evitando incompatibilidades de CPU cuando compilas localmente y despliegas en un clúster remoto. |
+| **Seguridad y Prevención de Fugas** | Auditoría del historial y definición de pautas claras para evitar la exfiltración de credenciales (BAU). | Proteger los activos informáticos y las credenciales corporativas frente a despistes accidentales en nuestro ritmo de trabajo diario. |
+| **Desarrollo Colaborativo (Git Flow)** | Estrategia de ramas `feature/*`, revisiones por compañeros, integraciones aprobadas y protección de la rama `main`. | Colaborar de forma segura en equipos con propiedad colectiva del código, asegurando la calidad y previniendo regresiones de código. |
+
+> [!TIP]
+> **Profundiza a tu ritmo con Inteligencia Artificial:**
+> Al ser una maqueta formativa, cada uno de estos temas puede ampliarse hasta donde desees. Te animamos a usar cualquier chatbot de IA de tu elección (DeepSeek, ChatGPT, Claude) o el propio **OpenCode** localmente en este directorio para pedirle explicaciones adicionales, profundizar en conceptos, o pedirle que modifique el código para nuevos retos (por ejemplo: *"¿Cómo añadiría persistencia de datos al backend en Kubernetes?"*).
+
+
 ## El proyecto
 
 ```
@@ -19,7 +42,8 @@ docs/                       ← Documentación administrativa y de apoyo
 ├── acuerdos-trabajo.md
 ├── administracion-imagenes.md
 ├── buenas-practicas-seguridad.md
-└── desarrollo-con-ia.md
+├── desarrollo-con-ia.md
+└── despliegue-killercoda.md
 k8s/                        ← manifiestos Kubernetes
 ├── backend-deployment.yaml
 ├── backend-service.yaml
@@ -35,10 +59,11 @@ reverse-proxy/              ← Dockerfile para construir imagen local (demo-com
 ```
 
 > **Documentación Adicional:**
-> * Para entender cómo colaboramos en el repositorio, la estrategia de ramas y el proceso de revisión de código, consulta la [Guía de Acuerdos de Trabajo y Desarrollo](file:///Users/pedroamador/testlab/mapfre-gitops-9/demo-kind/docs/acuerdos-trabajo.md).
-> * Para ver detalles sobre cómo configurar los registros, permisos de la organización y el pipeline de integración continua, consulta la [Guía de Gestión y Publicación de Imágenes](file:///Users/pedroamador/testlab/mapfre-gitops-9/demo-kind/docs/administracion-imagenes.md).
-> * Para conocer las directrices sobre cómo evitar fugas de credenciales o datos sensibles durante el desarrollo diario (BAU), consulta la [Guía de Buenas Prácticas de Seguridad y Prevención de Fugas](file:///Users/pedroamador/testlab/mapfre-gitops-9/demo-kind/docs/buenas-practicas-seguridad.md).
-> * Para ver cómo interactuar con este repositorio utilizando asistentes de IA o cómo usar OpenCode como chatbot local gratuito, lee la [Guía de Desarrollo y Exploración con IA](file:///Users/pedroamador/testlab/mapfre-gitops-9/demo-kind/docs/desarrollo-con-ia.md).
+> * Para entender cómo colaboramos en el repositorio, la estrategia de ramas y el proceso de revisión de código, consulta la [Guía de Acuerdos de Trabajo y Desarrollo](docs/acuerdos-trabajo.md).
+> * Para ver detalles sobre cómo configurar los registros, permisos de la organización y el pipeline de integración continua, consulta la [Guía de Gestión y Publicación de Imágenes](docs/administracion-imagenes.md).
+> * Para conocer las directrices sobre cómo evitar fugas de credenciales o datos sensibles durante el desarrollo diario (BAU), consulta la [Guía de Buenas Prácticas de Seguridad y Prevención de Fugas](docs/buenas-practicas-seguridad.md).
+> * Para ver cómo interactuar con este repositorio utilizando asistentes de IA o usar OpenCode como chatbot local, lee la [Guía de Desarrollo y Exploración con IA](docs/desarrollo-con-ia.md).
+> * Para desplegar y probar este proyecto en los entornos interactivos públicos gratuitos de Killercoda, consulta la [Guía de Despliegue en Killercoda](docs/despliegue-killercoda.md).
 
 
 
