@@ -191,3 +191,32 @@ kubectl port-forward service/reverse-proxy-service 30080:80
 Una vez activo el comando, ya puedes abrir la aplicación en tu navegador de macOS:
 [http://localhost:30080](http://localhost:30080)
 
+## Resolución de Problemas (Troubleshooting)
+
+### 1. Error `403 Forbidden` al acceder al Frontend
+
+Si tras desplegar el proyecto y configurar el `port-forward` intentas acceder y recibes un error `403 Forbidden` firmado por Nginx (por ejemplo, `nginx/1.31.2`), estás ante un problema clásico de permisos de archivos en contenedores.
+
+#### Causa Raíz
+Cuando Docker copia archivos del host al contenedor (`COPY index.html ...`), estos heredan las propiedades y permisos de archivo del sistema anfitrión. 
+
+Si el archivo `index.html` en tu máquina de desarrollo o servidor de compilación tiene permisos de lectura restringidos (por ejemplo, `rw-------` o lectura exclusiva para tu usuario en el host), al compilarse la imagen:
+* El servidor web Nginx dentro del contenedor (que corre bajo el usuario no privilegiado `nginx`) no tendrá permisos para leer `/usr/share/nginx/html/index.html`.
+* Al no poder leer el recurso de entrada, Nginx denegará el acceso devolviendo un código de error HTTP `403`.
+
+Puedes confirmarlo revisando los logs del pod del frontend:
+```bash
+kubectl logs deployment/frontend
+# Deberías ver un error del estilo:
+# "... open() "/usr/share/nginx/html/index.html" failed (13: Permission denied) ..."
+```
+
+#### Solución
+Para evitar este problema de portabilidad entre diferentes entornos y sistemas operativos de desarrollo:
+1. **Solución en caliente en el Host (antes de compilar):** Asegúrate de que el archivo tenga permisos de lectura global en tu máquina host antes de ejecutar el build:
+   ```bash
+   chmod 644 frontend/index.html
+   ```
+2. **Solución integrada en la compilación (Automatizada):** En el [Dockerfile](file:///Users/pedroamador/testlab/mapfre-gitops-9/demo-kind/frontend/Dockerfile) del frontend, se fuerza que el archivo copiado sea legible para cualquier usuario añadiendo la instrucción `RUN chmod 644 /usr/share/nginx/html/index.html` justo después de la copia del archivo. Esto garantiza que la imagen construida funcione correctamente en cualquier entorno.
+
+
