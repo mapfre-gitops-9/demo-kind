@@ -1,0 +1,12 @@
+accept = [200, 204, 301, 302, 403, 429]
+exclude = [
+  "^http://localhost",
+  "^https://github.com/organizations/.*/settings/",
+]
+exclude_path = [
+  "^backend/node_modules/",
+  "^daily/",
+]
+max_retries = 3
+timeout = 20
+user_agent = "demo-kind-link-checker"

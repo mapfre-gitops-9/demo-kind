@@ -1,0 +1,13 @@
+config:
+  default: true
+  MD013: false
+  MD024:
+    siblings_only: true
+  MD033:
+    allowed_elements:
+      - details
+      - summary
+
+ignores:
+  - daily/**
+  - backend/node_modules/**

@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+images:
+  - name: demo-kind-backend
+    newName: ghcr.io/mapfre-gitops-9/demo-backend
+    newTag: latest
+  - name: demo-kind-frontend
+    newName: ghcr.io/mapfre-gitops-9/demo-frontend
+    newTag: latest
+
+patches:
+  - path: public-images-patch.yaml
+  - path: nodeport-patch.yaml

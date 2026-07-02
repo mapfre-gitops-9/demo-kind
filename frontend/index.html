@@ -1,25 +1,237 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>Frontend</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Laboratorio Kubernetes</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family:
+        Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+      background: #f3f6fb;
+      color: #172033;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 2rem 1rem;
+      background:
+        radial-gradient(circle at top left, #dbeafe 0, transparent 34rem),
+        #f3f6fb;
+    }
+
+    main {
+      width: min(100%, 44rem);
+      padding: clamp(1.5rem, 5vw, 3rem);
+      border: 1px solid #d7deea;
+      border-radius: 1.25rem;
+      background: #fff;
+      box-shadow: 0 1.5rem 4rem rgb(29 48 82 / 12%);
+    }
+
+    .eyebrow {
+      margin: 0 0 .5rem;
+      color: #1d4ed8;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 7vw, 3.5rem);
+      line-height: 1;
+    }
+
+    .intro {
+      margin: 1.25rem 0 2rem;
+      color: #4b5563;
+      font-size: 1.05rem;
+      line-height: 1.65;
+    }
+
+    form {
+      display: grid;
+      gap: .75rem;
+    }
+
+    label {
+      font-weight: 700;
+    }
+
+    .controls {
+      display: flex;
+      gap: .75rem;
+    }
+
+    input,
+    button {
+      min-height: 3rem;
+      border-radius: .65rem;
+      font: inherit;
+    }
+
+    input {
+      min-width: 0;
+      flex: 1;
+      padding: .7rem .9rem;
+      border: 1px solid #9ca3af;
+    }
+
+    input:focus {
+      outline: 3px solid #bfdbfe;
+      border-color: #2563eb;
+    }
+
+    button {
+      padding: .7rem 1.25rem;
+      border: 0;
+      background: #1d4ed8;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: .65;
+    }
+
+    .hint {
+      margin: 0;
+      color: #6b7280;
+      font-size: .9rem;
+    }
+
+    .result {
+      min-height: 7rem;
+      margin-top: 2rem;
+      padding: 1.25rem;
+      border-radius: .8rem;
+      background: #eff6ff;
+    }
+
+    .result[hidden] {
+      display: none;
+    }
+
+    .message {
+      margin: 0 0 .5rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .instance {
+      margin: 0;
+      color: #475569;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      overflow-wrap: anywhere;
+    }
+
+    .error {
+      background: #fef2f2;
+      color: #991b1b;
+    }
+
+    @media (max-width: 34rem) {
+      .controls {
+        flex-direction: column;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h1>Frontend</h1>
+  <main>
+    <p class="eyebrow">demo-kind</p>
+    <h1>Una petición, tres servicios</h1>
+    <p class="intro">
+      El navegador llama al proxy, el proxy sirve este frontend y reenvía
+      <code>/api</code> al backend. Repite la prueba para observar qué réplica
+      responde.
+    </p>
 
-  <input id="name" placeholder="Tu nombre" />
-  <button onclick="callBackend()">Saludar</button>
+    <form id="greeting-form">
+      <label for="alias">Alias ficticio</label>
+      <div class="controls">
+        <input
+          id="alias"
+          name="alias"
+          maxlength="32"
+          placeholder="equipo-demo"
+          autocomplete="off"
+          aria-describedby="alias-hint"
+        >
+        <button id="submit" type="submit">Enviar petición</button>
+      </div>
+      <p id="alias-hint" class="hint">
+        No introduzcas nombres ni otros datos personales.
+      </p>
+    </form>
 
-  <p id="result"></p>
+    <section id="result" class="result" aria-live="polite" hidden>
+      <p id="message" class="message"></p>
+      <p id="instance" class="instance"></p>
+    </section>
+  </main>
 
   <script>
-    async function callBackend() {
-      const name = document.getElementById("name").value;
+    const form = document.getElementById("greeting-form");
+    const aliasInput = document.getElementById("alias");
+    const submitButton = document.getElementById("submit");
+    const result = document.getElementById("result");
+    const message = document.getElementById("message");
+    const instance = document.getElementById("instance");
 
-      const response = await fetch(`/api?name=${name}`);
-      const text = await response.text();
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      submitButton.disabled = true;
+      result.hidden = false;
+      result.classList.remove("error");
+      message.textContent = "Enviando la petición…";
+      instance.textContent = "";
 
-      document.getElementById("result").innerText = text;
-    }
+      const parameters = new URLSearchParams();
+      if (aliasInput.value.trim()) {
+        parameters.set("alias", aliasInput.value.trim());
+      }
+
+      try {
+        const query = parameters.size ? `?${parameters}` : "";
+        const response = await fetch(`/api/saludo${query}`);
+        const contentType = response.headers.get("content-type") || "";
+        const body = contentType.includes("application/json")
+          ? await response.json()
+          : {};
+
+        if (!response.ok) {
+          throw new Error(
+            body.error || `La API ha respondido con HTTP ${response.status}.`,
+          );
+        }
+
+        if (!body.mensaje || !body.instancia) {
+          throw new Error("La API ha devuelto una respuesta inesperada.");
+        }
+
+        message.textContent = body.mensaje;
+        instance.textContent = `Réplica: ${body.instancia}`;
+      } catch (error) {
+        result.classList.add("error");
+        message.textContent = "No se pudo completar la petición.";
+        instance.textContent = error.message;
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
   </script>
 </body>
 </html>

@@ -1,0 +1,301 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  documentation:
+    name: documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+
+      - name: Lint Markdown
+        run: npx --yes markdownlint-cli2@0.20.0 "**/*.md"
+
+      - name: Check links
+        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2
+        with:
+          args: >-
+            --config .lychee.toml
+            "./**/*.md"
+            "./**/*.html"
+          fail: true
+
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  manifests:
+    name: manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+
+      - name: Render local overlay
+        run: >-
+          docker run --rm
+          --volume "${PWD}:/workspace"
+          --workdir /workspace
+          registry.k8s.io/kubectl:v1.35.0@sha256:0bb95b2a450875fc8ceaea2f9987a99fe27c228846e2e00b93b65ebb0d59034e
+          kustomize k8s/overlays/local
+          > /tmp/local.yaml
+
+      - name: Render playground overlay
+        run: >-
+          docker run --rm
+          --volume "${PWD}:/workspace"
+          --workdir /workspace
+          registry.k8s.io/kubectl:v1.35.0@sha256:0bb95b2a450875fc8ceaea2f9987a99fe27c228846e2e00b93b65ebb0d59034e
+          kustomize k8s/overlays/playground
+          > /tmp/playground.yaml
+
+      - name: Validate Kubernetes schemas
+        run: |
+          for manifest in /tmp/local.yaml /tmp/playground.yaml; do
+            docker run --rm --interactive \
+              ghcr.io/yannh/kubeconform:v0.8.0-alpine@sha256:6b90a5f23d846140ce0194fe050b1995e546eba938f3a6bf10c039dd5e24588f \
+              -strict -summary < "${manifest}"
+          done
+
+  secrets:
+    name: secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+
+      - name: Scan the current tree
+        run: >-
+          docker run --rm
+          --volume "${PWD}:/repository"
+          ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+          git
+          /repository
+          --redact
+          --verbose
+
+  runtime:
+    name: runtime
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+
+      - name: Build backend
+        run: docker build --tag demo-kind-backend:local ./backend
+
+      - name: Build frontend
+        run: docker build --tag demo-kind-frontend:local ./frontend
+
+      - name: Verify non-root runtime users
+        run: |
+          test "$(docker run --rm --entrypoint id demo-kind-backend:local -u)" -ne 0
+          test "$(docker run --rm --entrypoint id demo-kind-frontend:local -u)" -ne 0
+          docker run --rm --entrypoint nginx demo-kind-frontend:local -t
+
+      - name: Scan backend image
+        uses: aquasecurity/trivy-action@c07df6fec6fa692e6fd1200d50aaa1fdd66f03c8 # master
+        with:
+          image-ref: demo-kind-backend:local
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+
+      - name: Scan frontend image
+        uses: aquasecurity/trivy-action@c07df6fec6fa692e6fd1200d50aaa1fdd66f03c8 # master
+        with:
+          image-ref: demo-kind-frontend:local
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+
+      - name: Create Kind cluster
+        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1
+        with:
+          version: v0.32.0
+          kubectl_version: v1.35.0
+          cluster_name: demo-kind
+          wait: 120s
+
+      - name: Load local images
+        run: |
+          kind load docker-image demo-kind-backend:local --name demo-kind
+          kind load docker-image demo-kind-frontend:local --name demo-kind
+
+      - name: Deploy local overlay
+        run: |
+          kubectl apply -k k8s/overlays/local
+          kubectl wait --for=condition=available deployment \
+            --all --namespace demo-kind --timeout=180s
+
+      - name: Run smoke tests through the proxy
+        run: |
+          kubectl port-forward --namespace demo-kind \
+            service/reverse-proxy-service 8080:80 >/tmp/port-forward.log 2>&1 &
+          port_forward_pid=$!
+          trap 'kill "${port_forward_pid}"' EXIT
+
+          for _ in {1..20}; do
+            if curl --fail --silent http://localhost:8080/ >/tmp/index.html; then
+              break
+            fi
+            sleep 1
+          done
+
+          grep -q "Una petición, tres servicios" /tmp/index.html
+          curl --fail --silent \
+            "http://localhost:8080/api/saludo?alias=ci" \
+            | grep -q '"mensaje":"Hola, ci."'
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            'http://localhost:8080/api/saludo?alias=%3Cscript%3E')" = "400"
+
+      - name: Verify pod recovery
+        run: |
+          pod=$(kubectl get pods --namespace demo-kind \
+            --selector app.kubernetes.io/name=backend \
+            --output jsonpath='{.items[0].metadata.name}')
+          kubectl delete pod "${pod}" --namespace demo-kind
+          kubectl rollout status deployment/backend \
+            --namespace demo-kind --timeout=120s
+
+      - name: Show diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get all --namespace demo-kind || true
+          kubectl describe pods --namespace demo-kind || true
+          kubectl logs --namespace demo-kind \
+            --selector app.kubernetes.io/part-of=demo-kind \
+            --all-containers --prefix --tail=100 || true
+
+  quality-gate:
+    name: quality-gate
+    if: always()
+    needs:
+      - documentation
+      - backend
+      - manifests
+      - secrets
+      - runtime
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every validation job
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Validation results: ${RESULTS}"
+          test "${RESULTS}" = "success success success success success"
+
+  publish:
+    name: publish-${{ matrix.package }}
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - quality-gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - package: demo-backend
+            context: ./backend
+          - package: demo-frontend
+            context: ./frontend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Normalize registry owner
+        id: registry
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: echo "owner=${OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate image metadata
+        id: metadata
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        with:
+          images: ghcr.io/${{ steps.registry.outputs.owner }}/${{ matrix.package }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ github.sha }}
+
+      - name: Build and publish image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: ${{ matrix.context }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          sbom: true
+          provenance: mode=max

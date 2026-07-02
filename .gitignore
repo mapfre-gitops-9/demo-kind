@@ -1,1 +1,21 @@
-daily
+# Fuentes de sesión: contienen material crudo y no se publican.
+daily/
+
+# Dependencias y resultados locales.
+node_modules/
+coverage/
+.DS_Store
+*.log
+
+# Configuración local y credenciales.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+kubeconfig
+kubeconfig.*
+credentials.*
+secrets/

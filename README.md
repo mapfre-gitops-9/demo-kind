@@ -1,286 +1,190 @@
-# demo-kind · _Despliegue Kubernetes con Kind_
+# demo-kind: de una aplicación a Kubernetes
 
-Este proyecto despliega los mismos tres servicios (**reverse-proxy**, **frontend** y **backend**) del proyecto [demo-compose](https://github.com/mapfre-gitops-9/docker-compose), pero usando **Kind** (Kubernetes in Docker) como orquestador en lugar de docker-compose.
+Laboratorio autónomo para entender cómo se construye, despliega, observa y
+mantiene una aplicación pequeña siguiendo prácticas habituales de un equipo
+de ingeniería.
 
-## Antecedentes
+No necesitas haber completado el repositorio `demo-compose`. Si ya lo conoces,
+este laboratorio continúa el recorrido desde Docker Compose hacia Kubernetes.
 
-Este proyecto nace como evolución de [demo-compose](https://github.com/mapfre-gitops-9/demo-compose), donde los mismos servicios se orquestaban con `docker-compose`. En aquel repositorio puedes encontrar:
+## Qué vas a construir
 
-- El historial de problemas típicos al Meter contenedores en desarrollo (resolución de nombres, CORS, reverse proxy, etc.)
-- Cada paso documentado como una lección independiente
-- La versión "plana" con `docker-compose`
+La aplicación tiene tres componentes:
 
-Este repositorio parte de esa misma base pero migrada a un despliegue Kubernetes sobre Kind.
-
-## 🎓 El Mapa de Aprendizaje (Viaje End-to-End)
-
-Este proyecto funciona como una maqueta mínima (*sandbox*), pero está estructurado para enseñarte un flujo de trabajo real de extremo a extremo (End-to-End) utilizando las mismas prácticas y herramientas que se manejan en producción (como OpenShift y pipelines corporativos). 
-
-A continuación tienes la hoja de ruta de los conceptos y piezas tecnológicas que vas a tocar en este repositorio:
-
-| Ficha / Concepto | ¿Qué hace en este proyecto? | ¿Para qué sirve en el mundo real? |
-| :--- | :--- | :--- |
-| **Linux y Redes** | Resolución de direccionamientos locales e internos mediante `kubectl port-forward` en Rancher Desktop. | Comprender la segmentación de redes, IPs privadas (RFC 1918), enrutamiento y depuración de conectividad en servidores locales y remotos. |
-| **Contenedores (Docker)** | Empaquetamiento del frontend y backend en imágenes independientes usando `Dockerfile` ligeros (`alpine`). | Estandarizar aplicaciones para que corran exactamente igual en tu máquina local, en un pipeline de CI o en producción. |
-| **Permisos en Construcción** | Aplicación de permisos explícitos de lectura (`RUN chmod 644`) en el `Dockerfile` del frontend. | Evitar problemas de portabilidad y errores de permisos HTTP `403 Forbidden` al compilar y ejecutar contenedores en diferentes plataformas host. |
-| **Orquestación (Kubernetes)** | Despliegue de `Deployments` (pods y réplicas), `Services` (balanceadores internos y NodePorts) y `ConfigMaps` para Nginx. | Aprender el estándar de la industria para ejecutar aplicaciones escalables, resilientes y autocurables en entornos de nube. |
-| **GitOps y Declaración (Kustomize)** | Agrupación de la arquitectura en `kustomization.yaml` desplegando de forma declarativa con `kubectl apply -k`. | Administrar la infraestructura como código de forma limpia, sin recurrir a plantillas complejas, facilitando el cambio dinámico de variables e imágenes. |
-| **Integración Continua (CI - GitHub Actions)** | Automatización de pruebas de compilación en Pull Requests y publicación automática de imágenes en GHCR en merges a `main`. | Asegurar que el código nunca se rompa en producción, automatizar procesos manuales y acelerar el ciclo de entrega de valor al usuario. |
-| **Compilación Multi-Arquitectura** | Emulación mediante QEMU en el workflow para soportar arquitecturas Intel (`amd64`) y Apple Silicon (`arm64`). | Soportar la diversidad de hardware moderno, evitando incompatibilidades de CPU cuando compilas localmente y despliegas en un clúster remoto. |
-| **Seguridad y Prevención de Fugas** | Auditoría del historial y definición de pautas claras para evitar la exfiltración de credenciales (BAU). | Proteger los activos informáticos y las credenciales corporativas frente a despistes accidentales en nuestro ritmo de trabajo diario. |
-| **Desarrollo Colaborativo (Git Flow)** | Estrategia de ramas `feature/*`, revisiones por compañeros, integraciones aprobadas y protección de la rama `main`. | Colaborar de forma segura en equipos con propiedad colectiva del código, asegurando la calidad y previniendo regresiones de código. |
-
-> [!TIP]
-> **Profundiza a tu ritmo con Inteligencia Artificial:**
-> Al ser una maqueta formativa, cada uno de estos temas puede ampliarse hasta donde desees. Te animamos a usar cualquier chatbot de IA de tu elección (DeepSeek, ChatGPT, Claude) o el propio **OpenCode** localmente en este directorio para pedirle explicaciones adicionales, profundizar en conceptos, o pedirle que modifique el código para nuevos retos (por ejemplo: *"¿Cómo añadiría persistencia de datos al backend en Kubernetes?"*).
-
-
-## El proyecto
-
-```
-docs/                       ← Documentación administrativa y de apoyo
-├── acuerdos-trabajo.md
-├── administracion-imagenes.md
-├── bitacora-taller.md
-├── buenas-practicas-seguridad.md
-├── desarrollo-con-ia.md
-└── despliegue-killercoda.md
-k8s/                        ← manifiestos Kubernetes
-├── backend-deployment.yaml
-├── backend-service.yaml
-├── frontend-deployment.yaml
-├── frontend-service.yaml
-├── reverse-proxy-configmap.yaml
-├── reverse-proxy-deployment.yaml
-├── reverse-proxy-service.yaml
-└── kustomization.yaml
-backend/                    ← app Node.js/Express (misma que en demo-compose)
-frontend/                   ← HTML estático servido por nginx (misma que en demo-compose)
-reverse-proxy/              ← Dockerfile para construir imagen local (demo-compose)
-```
-
-> **Documentación Adicional:**
-> * Para entender cómo colaboramos en el repositorio, la estrategia de ramas y el proceso de revisión de código, consulta la [Guía de Acuerdos de Trabajo y Desarrollo](docs/acuerdos-trabajo.md).
-> * Para ver la evolución cronológica del taller, las demostraciones técnicas y los debates de arquitectura surgidos en cada sesión, lee la [Bitácora del Taller de Contenedores y Orquestación](docs/bitacora-taller.md).
-> * Para ver detalles sobre cómo configurar los registros, permisos de la organización y el pipeline de integración continua, consulta la [Guía de Gestión y Publicación de Imágenes](docs/administracion-imagenes.md).
-> * Para conocer las directrices sobre cómo evitar fugas de credenciales o datos sensibles durante el desarrollo diario (BAU), consulta la [Guía de Buenas Prácticas de Seguridad y Prevención de Fugas](docs/buenas-practicas-seguridad.md).
-> * Para ver cómo interactuar con este repositorio utilizando asistentes de IA o usar OpenCode como chatbot local, lee la [Guía de Desarrollo y Exploración con IA](docs/desarrollo-con-ia.md).
-> * Para desplegar y probar este proyecto en los entornos interactivos públicos gratuitos de Killercoda, consulta la [Guía de Despliegue en Killercoda](docs/despliegue-killercoda.md).
-
-
-
-
-
-
-La arquitectura es la misma que en la versión con docker-compose: el **reverse-proxy** es el único punto de entrada. Recibe todas las peticiones y decide:
-
-| Ruta  | Destino                 | Servicio Kubernetes    |
-|-------|-------------------------|------------------------|
-| `/`   | `frontend-service:80`   | `frontend-service`     |
-| `/api`| `backend-service:3000`  | `backend-service`      |
+- Un **reverse proxy** Nginx como único punto de entrada.
+- Un **frontend** estático servido por Nginx.
+- Una **API** Node.js que devuelve un saludo y la réplica que ha respondido.
 
 ```mermaid
-graph TD
-    subgraph "Cluster Kind"
-        subgraph "default namespace"
-            RP["reverse-proxy<br/>(nginx) :80"]
-            FE["frontend<br/>(nginx) :80"]
-            BE["backend<br/>(Express) :3000"]
-        end
-    end
-
-    USR(["Navegador / curl<br/>:30080"]) -->|"GET /"| RP
-    RP -->|"proxy_pass /"| FE
-    RP -->|"proxy_pass /api"| BE
-    FE --> RP
-    BE --> RP
-    RP --> USR
-
-    linkStyle 0 stroke:#4a9eff
-    linkStyle 1,2 stroke:#f90
-    linkStyle 3,4 stroke:#4a9eff
-    linkStyle 5 stroke:#4a9eff
+flowchart LR
+    user["Navegador o curl"] -->|"GET /"| proxy["Reverse proxy<br>Nginx"]
+    user -->|"GET /api/saludo"| proxy
+    proxy --> frontend["Frontend<br>Nginx, 2 réplicas"]
+    proxy --> backend["Backend<br>Node.js, 2 réplicas"]
 ```
 
-```mermaid
-sequenceDiagram
-    actor User as Usuario
-    participant RP as reverse-proxy-service:80
-    participant FE as frontend-service:80
-    participant BE as backend-service:3000
+La maqueta permite observar resolución DNS interna, Services, réplicas,
+sondas, límites de recursos, configuración externa y recuperación automática.
 
-    User->>RP: GET /
-    RP->>FE: proxy_pass /
-    FE-->>RP: index.html
-    RP-->>User: index.html
+## Objetivos
 
-    User->>User: escribe nombre y pulsa
+Al terminar podrás:
 
-    User->>RP: GET /api?name=Pedro
-    RP->>BE: proxy_pass /api → backend-service:3000/
-    BE-->>RP: "Hello Pedro from backend!"
-    RP-->>User: "Hello Pedro from backend!"
-```
+- Explicar la diferencia entre una imagen, un contenedor, un pod, un
+  Deployment y un Service.
+- Construir imágenes reproducibles que no se ejecutan como `root`.
+- Desplegar la misma aplicación con dos overlays de Kustomize.
+- Seguir una petición desde el navegador hasta una réplica del backend.
+- Consultar logs, escalar, provocar un fallo y recuperar el servicio.
+- Distinguir integración continua, publicación de artefactos, despliegue
+  continuo y GitOps.
+- Aplicar controles básicos de seguridad, privacidad y revisión por pares.
 
-## Componentes Kubernetes
+Duración orientativa: entre dos y tres horas.
 
-| Recurso | Tipo | Réplicas | Puerto |
-|---------|------|----------|--------|
-| `backend` | Deployment | 2 | 3000 |
-| `frontend` | Deployment | 2 | 80 |
-| `reverse-proxy` | Deployment | 1 | 80 |
-| `backend-service` | Service (ClusterIP) | — | 3000 |
-| `frontend-service` | Service (ClusterIP) | — | 80 |
-| `reverse-proxy-service` | Service (NodePort) | — | 80 → `:30080` |
-| `reverse-proxy-config` | ConfigMap | — | nginx default.conf |
+## Elige tu recorrido
 
-El **reverse-proxy-service** se expone como `NodePort` en el puerto `30080` del host, siendo el único punto de entrada al clúster.
+Los dos recorridos despliegan la misma arquitectura. El recorrido local añade
+la construcción y carga de imágenes; el playground evita instalar herramientas
+en el equipo.
 
-## Cómo desplegar
+### Recorrido local con Kind
 
-### Prerrequisitos
+Necesitas:
 
-- [Docker](https://docker.com)
-- [Kind](https://kind.sigs.k8s.io)
-- [kubectl](https://kubernetes.io/docs/tasks/tools/)
-
-### Pasos
+- Docker Engine, Rancher Desktop u otro motor compatible.
+- [Kind](https://kind.sigs.k8s.io/docs/user/quick-start/).
+- [kubectl](https://kubernetes.io/docs/tasks/tools/).
 
 ```bash
-# 1. Construir las imágenes Docker
-docker build -t ghcr.io/mapfre-gitops-9/demo-backend:latest ./backend
-docker build -t ghcr.io/mapfre-gitops-9/demo-frontend:latest ./frontend
+git clone https://github.com/mapfre-gitops-9/demo-kind.git
+cd demo-kind
 
-# 2. Crear el clúster Kind (si no existe)
-kind create cluster
+docker build -t demo-kind-backend:local ./backend
+docker build -t demo-kind-frontend:local ./frontend
 
-# 3. Cargar las imágenes en el clúster
-kind load docker-image ghcr.io/mapfre-gitops-9/demo-backend:latest
-kind load docker-image ghcr.io/mapfre-gitops-9/demo-frontend:latest
+kind create cluster --name demo-kind
+kind load docker-image demo-kind-backend:local --name demo-kind
+kind load docker-image demo-kind-frontend:local --name demo-kind
 
-# 4. Desplegar con kustomize
-kubectl apply -k k8s/
-
-# 5. Verificar que los pods están running
-kubectl get pods
-
-# 6. Probar
-curl http://localhost:30080
-# o abre http://localhost:30080 en el navegador
+kubectl apply -k k8s/overlays/local
+kubectl wait --for=condition=available deployment \
+  --all --namespace demo-kind --timeout=120s
 ```
 
-> **Nota:** El reverse-proxy usa la imagen `nginx:alpine` directamente con un ConfigMap, por lo que no necesita construcción ni carga adicional.
-
-### Limpieza
+Abre un segundo terminal y deja activo:
 
 ```bash
-# Eliminar el despliegue
-kubectl delete -k k8s/
-
-# Eliminar el clúster Kind
-kind delete cluster
+kubectl port-forward \
+  --namespace demo-kind service/reverse-proxy-service 8080:80
 ```
 
-## Caso Especial: macOS + Rancher Desktop (Arquitectura de Red)
-
-Si estás utilizando **Rancher Desktop** en macOS para ejecutar el motor de Docker y Kubernetes, te encontrarás con una limitación de red clásica al intentar acceder a la aplicación desde tu navegador local a través de `http://localhost:30080`.
-
-### El porqué de la inaccesibilidad directa
-
-En macOS, los contenedores de Docker no corren nativamente; se ejecutan dentro de una máquina virtual (administrada por Rancher Desktop, comúnmente usando Lima). Esto introduce tres capas de red aisladas:
-
-1. **Tu macOS Host:** La red física de tu ordenador (por ejemplo, la IP `192.168.1.39`).
-2. **La Máquina Virtual de Rancher Desktop:** Corre sobre una interfaz de red propia (por ejemplo, la IP `192.168.64.2`). Tu Mac tiene ruta directa a esta máquina virtual.
-3. **La Red Interna de Docker:** Creada dentro de la máquina virtual (por ejemplo, la subred `172.29.0.0/16` donde el clúster Kind tiene el nodo en la IP `172.29.0.2`). 
-
-```mermaid
-graph TD
-    subgraph "Capa 1: macOS Host (Tu Mac)"
-        MAC["IP Mac: 192.168.1.39<br/>Navegador (localhost:30080)"]
-    end
-
-    subgraph "Capa 2: VM de Rancher Desktop (Lima)"
-        VM["IP VM: 192.168.64.2"]
-    end
-
-    subgraph "Capa 3: Red Interna de Docker"
-        KIND["IP Kind Container: 172.29.0.2<br/>(NodePort :30080)"]
-    end
-
-    MAC -->|Ping OK| VM
-    VM -->|Ping OK| KIND
-    MAC -.->|Bloqueado: Sin Ruta Directa| KIND
-
-    MAC ====>|Túnel: kubectl port-forward<br/>localhost:30080 -> Service:80| KIND
-```
-
-Como **tu macOS (Capa 1) no sabe cómo enrutar paquetes hacia la Red Interna de Docker (Capa 3)**, cualquier petición directa a `http://localhost:30080` (o incluso a la IP del contenedor `172.29.0.2:30080`) fallará desde tu navegador. Sin embargo, sí funciona si accedes con un shell a la VM de Rancher Desktop (`rdctl shell`) y la ejecutas desde allí.
-
-### La Solución: kubectl port-forward
-
-Para resolver este aislamiento y poder interactuar con el entorno de desarrollo directamente desde tu navegador en macOS, debes crear un puente (túnel TCP) directo al servicio de Kubernetes.
-
-Ejecuta el siguiente comando en tu terminal de macOS:
+Visita [http://localhost:8080](http://localhost:8080) o prueba:
 
 ```bash
-kubectl port-forward service/reverse-proxy-service 30080:80
+curl "http://localhost:8080/api/saludo?alias=equipo-demo"
 ```
 
-**¿Cómo funciona esto?**
-* Escucha peticiones locales en tu Mac en `localhost:30080`.
-* Canaliza el tráfico a través del socket de conexión de la API de Kubernetes gestionado por Rancher, saltándose las barreras de red.
-* Entrega las peticiones directamente al pod del **reverse-proxy-service** en el puerto `80`.
+El recorrido usa `port-forward` porque un NodePort de Kind no se publica de
+forma portable en el host sin configuración adicional.
 
-Una vez activo el comando, ya puedes abrir la aplicación en tu navegador de macOS:
-[http://localhost:30080](http://localhost:30080)
+### Recorrido desde el navegador
 
-## Resolución de Problemas (Troubleshooting)
+1. Abre el
+   [Kubernetes Playground de Killercoda](https://killercoda.com/playgrounds/scenario/kubernetes).
+2. Ejecuta:
 
-### 1. Error `403 Forbidden` al acceder al Frontend
-
-Si tras desplegar el proyecto y configurar el `port-forward` intentas acceder y recibes un error `403 Forbidden` firmado por Nginx (por ejemplo, `nginx/1.31.2`), estás ante un problema clásico de permisos de archivos en contenedores.
-
-#### Causa Raíz
-Cuando Docker copia archivos del host al contenedor (`COPY index.html ...`), estos heredan las propiedades y permisos de archivo del sistema anfitrión. 
-
-Si el archivo `index.html` en tu máquina de desarrollo o servidor de compilación tiene permisos de lectura restringidos (por ejemplo, `rw-------` o lectura exclusiva para tu usuario en el host), al compilarse la imagen:
-* El servidor web Nginx dentro del contenedor (que corre bajo el usuario no privilegiado `nginx`) no tendrá permisos para leer `/usr/share/nginx/html/index.html`.
-* Al no poder leer el recurso de entrada, Nginx denegará el acceso devolviendo un código de error HTTP `403`.
-
-Puedes confirmarlo revisando los logs del pod del frontend:
 ```bash
-kubectl logs deployment/frontend
-# Deberías ver un error del estilo:
-# "... open() "/usr/share/nginx/html/index.html" failed (13: Permission denied) ..."
+git clone https://github.com/mapfre-gitops-9/demo-kind.git
+cd demo-kind
+kubectl apply -k k8s/overlays/playground
+kubectl wait --for=condition=available deployment \
+  --all --namespace demo-kind --timeout=180s
 ```
 
-#### Solución
-Para evitar este problema de portabilidad entre diferentes entornos y sistemas operativos de desarrollo:
-1. **Solución en caliente en el Host (antes de compilar):** Asegúrate de que el archivo tenga permisos de lectura global en tu máquina host antes de ejecutar el build:
-   ```bash
-   chmod 644 frontend/index.html
-   ```
-2. **Solución integrada en la compilación (Automatizada):** En el [Dockerfile](file:///Users/pedroamador/testlab/mapfre-gitops-9/demo-kind/frontend/Dockerfile) del frontend, se fuerza que el archivo copiado sea legible para cualquier usuario añadiendo la instrucción `RUN chmod 644 /usr/share/nginx/html/index.html` justo después de la copia del archivo. Esto garantiza que la imagen construida funcione correctamente en cualquier entorno.
+1. Abre `30080` desde **Traffic Port Accessor**.
 
-## Recursos de Aprendizaje (Laboratorios Prácticos)
+El playground es público y temporal. No introduzcas credenciales, archivos
+corporativos ni datos reales.
 
-Para aquellos compañeros que se estén iniciando en el mundo de los contenedores y la orquestación (con la meta de familiarizarse con Kubernetes u OpenShift), la práctica interactiva es el mejor camino. 
+## Comprueba el resultado
 
-Aquí dispones de las mejores alternativas gratuitas para aprender directamente desde el navegador, sin necesidad de instalar nada en tu equipo:
+```bash
+kubectl get all --namespace demo-kind
+curl "http://localhost:8080/api/saludo?alias=equipo-demo"
+```
 
-### 1. Cursos Guiados Paso a Paso (LabEx.io)
-**[LabEx.io](https://labex.io)** te permite registrarte gratis (por ejemplo, con tu cuenta de Gmail) y te guía de forma estructurada en laboratorios con explicaciones teóricas y retos prácticos paso a paso:
+La respuesta tendrá esta forma:
 
-*   **[Linux for Noobs / Quick Start with Linux](https://labex.io):** Ideal para familiarizarse con la línea de comandos, navegación de directorios y permisos de archivos (muy útil para comprender los errores de Nginx vistos en la sección de troubleshooting).
-*   **[Docker for Beginners / 30 Days of Docker](https://labex.io):** Aprende los conceptos fundamentales de contenedores: imágenes, redes, volúmenes de datos, puertos y cómo escribir tus propios Dockerfiles.
-*   **[Kubernetes for Noobs / Kubernetes Practice Labs](https://labex.io):** Da tus primeros pasos con un clúster Minikube real ejecutando comandos `kubectl` para crear deployments, exponer servicios y escalar pods.
+```json
+{
+  "mensaje": "Hola, equipo-demo.",
+  "instancia": "backend-xxxxxxxxxx-yyyyy"
+}
+```
 
-### 2. Entornos Interactivos y Escenarios Libres (Killercoda & Playgrounds)
-Si prefieres un enfoque al puro estilo de la mítica y desaparecida **Katacoda** (pantalla partida con guía interactiva a la izquierda y un terminal real a la derecha donde se autocompletan los comandos al hacer clic):
+Repite la petición. Kubernetes puede enviarla a distintas réplicas.
 
-*   **[Killercoda](https://killercoda.com/):** Es el sucesor directo de Katacoda. Ofrece una biblioteca enorme y gratuita de escenarios prácticos sobre Linux, Docker, Git y entornos multi-nodo reales de Kubernetes muy actualizados.
-*   **[Play with Docker](https://labs.play-with-docker.com/) y [Play with Kubernetes](https://labs.play-with-k8s.com/):** Iniciativas oficiales de la comunidad que te permiten abrir entornos interactivos (Playgrounds) limpios de Docker y Kubernetes durante 4 horas para probar tus propias imágenes o manifiestos de forma libre.
+## Itinerario de aprendizaje
 
+| Laboratorio | Qué aprenderás | Tiempo |
+| --- | --- | --- |
+| [1. Flujo HTTP y contenedores](docs/labs/01-flujo-http-y-contenedores.md) | Dónde se ejecuta cada pieza y cómo viaja una petición | 20 min |
+| [2. Construcción de imágenes](docs/labs/02-construccion-de-imagenes.md) | Dockerfile, capas, dependencias y usuarios no privilegiados | 30 min |
+| [3. Kind y Kustomize](docs/labs/03-kind-y-kustomize.md) | Despliegue declarativo y overlays | 35 min |
+| [4. Observar, escalar y recuperar](docs/labs/04-observar-escalar-y-recuperar.md) | Logs, sondas, réplicas, fallos y reconciliación | 35 min |
+| [5. Colaboración, CI y seguridad](docs/labs/05-colaboracion-ci-seguridad-ia.md) | GitHub Flow, controles automáticos y uso responsable de IA | 30 min |
 
+## Maqueta y producción no son lo mismo
 
+Este repositorio usa recursos y controles reales, pero no es una plantilla de
+producción.
 
+| Tema | En esta maqueta | En un entorno de producción |
+| --- | --- | --- |
+| Entrada | Proxy y port-forward o NodePort | Gateway/Ingress, balanceador y TLS |
+| Identidad | No existe autenticación | Identidad corporativa y autorización |
+| Secretos | No se necesitan | Gestor externo, cifrado y RBAC |
+| Red | Comunicación abierta dentro del clúster | CNI compatible y NetworkPolicies |
+| Disponibilidad | Kind de un nodo | Varios nodos, zonas y políticas de disrupción |
+| Observabilidad | `kubectl`, logs y sondas | Métricas, trazas, logs centralizados y alertas |
+| Imágenes | `latest` solo en el playground | Versiones inmutables o digests promovidos |
+| Entrega | CI y publicación en GHCR | Promoción, despliegue y reconciliación controlados |
+
+Consulta la
+[explicación completa](docs/referencia/arquitectura-y-produccion.md).
+
+## API
+
+### `GET /api/saludo`
+
+Parámetro opcional `alias`:
+
+- Entre 1 y 32 caracteres después de eliminar espacios exteriores.
+- Letras, números, espacios, guiones y guiones bajos.
+- Si se omite, se usa `equipo`.
+- Los valores inválidos reciben `400`.
+
+Usa siempre alias ficticios. La aplicación no persiste ni registra este valor.
+
+### `GET /healthz`
+
+Devuelve el estado del backend y se utiliza desde las sondas de Kubernetes.
+
+## Limpieza
+
+```bash
+kubectl delete -k k8s/overlays/local
+kind delete cluster --name demo-kind
+```
+
+## Más información
+
+- [Cómo contribuir](CONTRIBUTING.md)
+- [Política de seguridad](SECURITY.md)
+- [Arquitectura: maqueta frente a producción](docs/referencia/arquitectura-y-produccion.md)
+- [Seguridad y respuesta ante incidentes](docs/referencia/seguridad.md)
+- [Uso responsable de asistentes de IA](docs/referencia/uso-responsable-ia.md)
+- [Procedencia y revisión del material](docs/referencia/procedencia.md)
+- [Bitácora resumida del taller](docs/referencia/bitacora.md)
+- [Mantenimiento de CI, GitHub y GHCR](docs/mantenimiento/github-y-ghcr.md)
