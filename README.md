@@ -219,4 +219,17 @@ Para evitar este problema de portabilidad entre diferentes entornos y sistemas o
    ```
 2. **Solución integrada en la compilación (Automatizada):** En el [Dockerfile](file:///Users/pedroamador/testlab/mapfre-gitops-9/demo-kind/frontend/Dockerfile) del frontend, se fuerza que el archivo copiado sea legible para cualquier usuario añadiendo la instrucción `RUN chmod 644 /usr/share/nginx/html/index.html` justo después de la copia del archivo. Esto garantiza que la imagen construida funcione correctamente en cualquier entorno.
 
+## Recursos de Aprendizaje (Laboratorios Prácticos)
+
+Para aquellos compañeros que se estén iniciando en el mundo de los contenedores y la orquestación (con la meta de familiarizarse con Kubernetes u OpenShift), la práctica interactiva es el mejor camino.
+
+Aunque la mítica plataforma **Katacoda** ya no existe, actualmente la plataforma **[LabEx.io](https://labex.io)** es una excelente alternativa. Permite registrarse de forma gratuita (por ejemplo, con una cuenta de Gmail) y realizar laboratorios interactivos directamente desde el navegador, con entornos reales y guías paso a paso.
+
+Aquí tienes tres itinerarios iniciales recomendados:
+
+1. **[Linux for Noobs / Quick Start with Linux](https://labex.io):** Ideal para familiarizarse con la línea de comandos, navegación de directorios, permisos de archivos (muy útil para entender el problema de permisos de Nginx visto en la sección de troubleshooting) y tareas esenciales de administración de sistemas.
+2. **[Docker for Beginners / 30 Days of Docker](https://labex.io):** Aprende los conceptos fundamentales de contenedores: imágenes, redes, volúmenes de datos, puertos y cómo escribir Dockerfiles.
+3. **[Kubernetes for Noobs / Kubernetes Practice Labs](https://labex.io):** Da tus primeros pasos con un clúster Minikube real ejecutando comandos `kubectl` para crear deployments, exponer servicios, gestionar pods y entender la orquestación.
+
+
 
