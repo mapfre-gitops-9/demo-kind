@@ -16,8 +16,10 @@ Este repositorio parte de esa misma base pero migrada a un despliegue Kubernetes
 
 ```
 docs/                       ← Documentación administrativa y de apoyo
+├── acuerdos-trabajo.md
 ├── administracion-imagenes.md
-└── buenas-practicas-seguridad.md
+├── buenas-practicas-seguridad.md
+└── desarrollo-con-ia.md
 k8s/                        ← manifiestos Kubernetes
 ├── backend-deployment.yaml
 ├── backend-service.yaml
@@ -33,8 +35,12 @@ reverse-proxy/              ← Dockerfile para construir imagen local (demo-com
 ```
 
 > **Documentación Adicional:**
+> * Para entender cómo colaboramos en el repositorio, la estrategia de ramas y el proceso de revisión de código, consulta la [Guía de Acuerdos de Trabajo y Desarrollo](file:///Users/pedroamador/testlab/mapfre-gitops-9/demo-kind/docs/acuerdos-trabajo.md).
 > * Para ver detalles sobre cómo configurar los registros, permisos de la organización y el pipeline de integración continua, consulta la [Guía de Gestión y Publicación de Imágenes](file:///Users/pedroamador/testlab/mapfre-gitops-9/demo-kind/docs/administracion-imagenes.md).
 > * Para conocer las directrices sobre cómo evitar fugas de credenciales o datos sensibles durante el desarrollo diario (BAU), consulta la [Guía de Buenas Prácticas de Seguridad y Prevención de Fugas](file:///Users/pedroamador/testlab/mapfre-gitops-9/demo-kind/docs/buenas-practicas-seguridad.md).
+> * Para ver cómo interactuar con este repositorio utilizando asistentes de IA o cómo usar OpenCode como chatbot local gratuito, lee la [Guía de Desarrollo y Exploración con IA](file:///Users/pedroamador/testlab/mapfre-gitops-9/demo-kind/docs/desarrollo-con-ia.md).
+
+
 
 
 
