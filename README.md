@@ -15,6 +15,8 @@ Este repositorio parte de esa misma base pero migrada a un despliegue Kubernetes
 ## El proyecto
 
 ```
+docs/                       ← Documentación administrativa y de apoyo
+└── administracion-imagenes.md
 k8s/                        ← manifiestos Kubernetes
 ├── backend-deployment.yaml
 ├── backend-service.yaml
@@ -28,6 +30,10 @@ backend/                    ← app Node.js/Express (misma que en demo-compose)
 frontend/                   ← HTML estático servido por nginx (misma que en demo-compose)
 reverse-proxy/              ← Dockerfile para construir imagen local (demo-compose)
 ```
+
+> **Documentación Adicional:**
+> * Para ver detalles sobre cómo configurar los registros, permisos de la organización y el pipeline de integración continua, consulta la [Guía de Gestión y Publicación de Imágenes](file:///Users/pedroamador/testlab/mapfre-gitops-9/demo-kind/docs/administracion-imagenes.md).
+
 
 La arquitectura es la misma que en la versión con docker-compose: el **reverse-proxy** es el único punto de entrada. Recibe todas las peticiones y decide:
 
