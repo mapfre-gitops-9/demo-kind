@@ -137,3 +137,57 @@ kubectl delete -k k8s/
 # Eliminar el clúster Kind
 kind delete cluster
 ```
+
+## Caso Especial: macOS + Rancher Desktop (Arquitectura de Red)
+
+Si estás utilizando **Rancher Desktop** en macOS para ejecutar el motor de Docker y Kubernetes, te encontrarás con una limitación de red clásica al intentar acceder a la aplicación desde tu navegador local a través de `http://localhost:30080`.
+
+### El porqué de la inaccesibilidad directa
+
+En macOS, los contenedores de Docker no corren nativamente; se ejecutan dentro de una máquina virtual (administrada por Rancher Desktop, comúnmente usando Lima). Esto introduce tres capas de red aisladas:
+
+1. **Tu macOS Host:** La red física de tu ordenador (por ejemplo, la IP `192.168.1.39`).
+2. **La Máquina Virtual de Rancher Desktop:** Corre sobre una interfaz de red propia (por ejemplo, la IP `192.168.64.2`). Tu Mac tiene ruta directa a esta máquina virtual.
+3. **La Red Interna de Docker:** Creada dentro de la máquina virtual (por ejemplo, la subred `172.29.0.0/16` donde el clúster Kind tiene el nodo en la IP `172.29.0.2`). 
+
+```mermaid
+graph TD
+    subgraph "Capa 1: macOS Host (Tu Mac)"
+        MAC["IP Mac: 192.168.1.39<br/>Navegador (localhost:30080)"]
+    end
+
+    subgraph "Capa 2: VM de Rancher Desktop (Lima)"
+        VM["IP VM: 192.168.64.2"]
+    end
+
+    subgraph "Capa 3: Red Interna de Docker"
+        KIND["IP Kind Container: 172.29.0.2<br/>(NodePort :30080)"]
+    end
+
+    MAC -->|Ping OK| VM
+    VM -->|Ping OK| KIND
+    MAC -.->|Bloqueado: Sin Ruta Directa| KIND
+
+    MAC ====>|Túnel: kubectl port-forward<br/>localhost:30080 -> Service:80| KIND
+```
+
+Como **tu macOS (Capa 1) no sabe cómo enrutar paquetes hacia la Red Interna de Docker (Capa 3)**, cualquier petición directa a `http://localhost:30080` (o incluso a la IP del contenedor `172.29.0.2:30080`) fallará desde tu navegador. Sin embargo, sí funciona si accedes con un shell a la VM de Rancher Desktop (`rdctl shell`) y la ejecutas desde allí.
+
+### La Solución: kubectl port-forward
+
+Para resolver este aislamiento y poder interactuar con el entorno de desarrollo directamente desde tu navegador en macOS, debes crear un puente (túnel TCP) directo al servicio de Kubernetes.
+
+Ejecuta el siguiente comando en tu terminal de macOS:
+
+```bash
+kubectl port-forward service/reverse-proxy-service 30080:80
+```
+
+**¿Cómo funciona esto?**
+* Escucha peticiones locales en tu Mac en `localhost:30080`.
+* Canaliza el tráfico a través del socket de conexión de la API de Kubernetes gestionado por Rancher, saltándose las barreras de red.
+* Entrega las peticiones directamente al pod del **reverse-proxy-service** en el puerto `80`.
+
+Una vez activo el comando, ya puedes abrir la aplicación en tu navegador de macOS:
+[http://localhost:30080](http://localhost:30080)
+
